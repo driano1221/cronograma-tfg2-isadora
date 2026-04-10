@@ -437,7 +437,7 @@ const phases = [
 const LS_KEY    = 'tfg2_isadora_v1';
 const IDB_DB    = 'tfg2_fs';
 const IDB_ST    = 'handles';
-const CLOUD_URL = 'https://jsonblob.com/api/jsonBlob/019d78e5-d19a-70b1-a270-d3f0123f5f3b';
+const CLOUD_URL = 'https://teste-af68e-default-rtdb.firebaseio.com/sessions.json';
 
 // — Carrega dados locais: localStorage → padrão (síncrono, para exibição imediata)
 function loadLocalData() {
@@ -453,11 +453,11 @@ let sessions = loadLocalData();
 // — Busca dados da nuvem e atualiza a interface
 async function initData() {
   try {
-    const res = await fetch(CLOUD_URL, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch(CLOUD_URL);
     if (!res.ok) throw new Error();
     const data = await res.json();
-    if (data && data.sessions && Array.isArray(data.sessions)) {
-      sessions = data.sessions;
+    if (data && Array.isArray(data)) {
+      sessions = data;
       try { localStorage.setItem(LS_KEY, JSON.stringify(sessions)); } catch(_) {}
       renderGantt();
       if (currentView === 'calendar') renderCalendar();
@@ -483,8 +483,8 @@ async function saveToCloud() {
     setStatus('saving');
     const res = await fetch(CLOUD_URL, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ sessions }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessions),
     });
     setStatus(res.ok ? 'linked' : 'local');
   } catch(_) {
