@@ -239,8 +239,6 @@ h1 {
   <h1>Cronograma TFG2 — Isadora Barbosa Castro Gomes · abr–jun 2026</h1>
   <div class="save-bar">
     <span id="save-status" class="save-status local">SALVO LOCALMENTE</span>
-    <button id="btn-link"    class="ctrl-btn primary" onclick="linkFile()">Vincular arquivo</button>
-    <button id="btn-relink"  class="ctrl-btn primary" onclick="linkFile()" style="display:none">Reativar</button>
     <button class="ctrl-btn" onclick="downloadHTML()" title="Baixar HTML com dados embutidos">⬇ HTML</button>
     <button class="ctrl-btn" onclick="exportJSON()"   title="Exportar dados como JSON">⬇ JSON</button>
     <label  class="ctrl-btn" title="Importar dados de JSON">⬆ JSON<input type="file" accept=".json" onchange="importJSON(event)" style="display:none"></label>
@@ -436,16 +434,13 @@ const phases = [
 // ══════════════════════════════════════════════════════════════════════════════
 // PERSISTÊNCIA
 // ══════════════════════════════════════════════════════════════════════════════
-const LS_KEY = 'tfg2_isadora_v1';
-const IDB_DB  = 'tfg2_fs';
-const IDB_ST  = 'handles';
+const LS_KEY    = 'tfg2_isadora_v1';
+const IDB_DB    = 'tfg2_fs';
+const IDB_ST    = 'handles';
+const CLOUD_URL = 'https://jsonblob.com/api/jsonBlob/019d78e5-d19a-70b1-a270-d3f0123f5f3b';
 
-// — Carrega dados: script embutido → localStorage → padrão
-function loadData() {
-  try {
-    const emb = document.getElementById('data-store').textContent.trim();
-    if (emb && emb !== 'null') return JSON.parse(emb);
-  } catch(_) {}
+// — Carrega dados locais: localStorage → padrão (síncrono, para exibição imediata)
+function loadLocalData() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) return JSON.parse(raw);
@@ -453,13 +448,48 @@ function loadData() {
   return JSON.parse(JSON.stringify(defaultSessions));
 }
 
-let sessions = loadData();
+let sessions = loadLocalData();
 
-// — Salva sempre no localStorage e, se arquivo vinculado, no arquivo local
+// — Busca dados da nuvem e atualiza a interface
+async function initData() {
+  try {
+    const res = await fetch(CLOUD_URL, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (data && data.sessions && Array.isArray(data.sessions)) {
+      sessions = data.sessions;
+      try { localStorage.setItem(LS_KEY, JSON.stringify(sessions)); } catch(_) {}
+      renderGantt();
+      if (currentView === 'calendar') renderCalendar();
+      if (activeWeek !== null) showDetail(activeWeek);
+      setStatus('linked');
+    }
+  } catch(_) {
+    setStatus('local');
+  }
+}
+
+// — Salva no localStorage + nuvem
 async function saveData() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(sessions)); } catch(_) {}
   if (fileHandle) await writeToFile();
+  saveToCloud();  // não-bloqueante
   showToast();
+}
+
+// — Salva na nuvem (jsonblob)
+async function saveToCloud() {
+  try {
+    setStatus('saving');
+    const res = await fetch(CLOUD_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ sessions }),
+    });
+    setStatus(res.ok ? 'linked' : 'local');
+  } catch(_) {
+    setStatus('local');
+  }
 }
 
 // ── IndexedDB (guarda o FileSystemFileHandle entre sessões) ──────────────────
@@ -500,20 +530,12 @@ function hasFileAPI() {
 
 function setStatus(state) {
   const el = document.getElementById('save-status');
-  const btnLink  = document.getElementById('btn-link');
-  const btnRelink = document.getElementById('btn-relink');
   if (state === 'linked') {
-    el.textContent = '● ARQUIVO VINCULADO'; el.className = 'save-status linked';
-    btnLink.style.display  = 'none';
-    btnRelink.style.display = 'none';
-  } else if (state === 'stale') {
-    el.textContent = '○ REATIVAR SALVAMENTO'; el.className = 'save-status stale';
-    btnLink.style.display   = 'none';
-    btnRelink.style.display = '';
+    el.textContent = '● NUVEM SINCRONIZADA'; el.className = 'save-status linked';
+  } else if (state === 'saving') {
+    el.textContent = '▲ SALVANDO...'; el.className = 'save-status stale';
   } else {
-    el.textContent = 'SALVO LOCALMENTE'; el.className = 'save-status local';
-    btnLink.style.display   = hasFileAPI() ? '' : 'none';
-    btnRelink.style.display = 'none';
+    el.textContent = '○ SEM CONEXÃO — LOCAL'; el.className = 'save-status local';
   }
 }
 
@@ -1049,6 +1071,7 @@ function switchView(v) {
 // INIT
 // ══════════════════════════════════════════════════════════════════════════════
 renderGantt();
+initData();       // busca dados da nuvem e atualiza interface
 tryRestoreHandle();
 </script>
 </body>
