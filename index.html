@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cronograma TFG2 — Isadora</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Source+Sans+3:wght@400;500&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Source Sans 3', system-ui, sans-serif;
+  background: #141010;
+  color: #e8e0d5;
+  padding: 2rem;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(180,20,20,0.04) 0 1px, transparent 1px 60px),
+    repeating-linear-gradient(0deg,  rgba(180,20,20,0.04) 0 1px, transparent 1px 60px);
+}
+.wrap { max-width: 900px; margin: 0 auto; }
+
+/* ─── Topbar ──────────────────────────────────────────── */
+.topbar { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:1.5rem; flex-wrap:wrap; }
+h1 {
+  font-family:'Oswald',sans-serif; font-size:18px; font-weight:700;
+  color:#e8e0d5; text-transform:uppercase; letter-spacing:.08em;
+  border-left:4px solid #CC1111; padding-left:12px; line-height:1.3;
+}
+.save-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex-shrink:0; }
+.save-status {
+  font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:.07em;
+  padding:3px 9px; border-radius:2px; white-space:nowrap;
+}
+.save-status.local   { background:#2a2015; color:#BA7517; border:0.5px solid #BA7517; }
+.save-status.linked  { background:#142015; color:#639922; border:0.5px solid #639922; }
+.save-status.stale   { background:#261515; color:#CC1111; border:0.5px solid #CC1111; }
+.ctrl-btn {
+  font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:.06em;
+  background:none; border:0.5px solid #5a4545; color:#9a8f8f;
+  border-radius:2px; padding:3px 9px; cursor:pointer; transition:all .15s;
+  white-space:nowrap;
+}
+.ctrl-btn:hover { border-color:#CC1111; color:#e8e0d5; }
+.ctrl-btn.primary { border-color:#CC1111; color:#CC1111; }
+.ctrl-btn.primary:hover { background:#CC1111; color:#fff; }
+#btn-link { display:none; }
+
+/* ─── Legend ──────────────────────────────────────────── */
+.legend { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 14px; }
+.leg-item { display:flex; align-items:center; gap:5px; font-size:12px; color:#9a8f8f; }
+.leg-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+
+/* ─── Gantt ───────────────────────────────────────────── */
+.gantt-grid { width:100%; border-collapse:collapse; }
+.gantt-grid th {
+  font-family:'Oswald',sans-serif; font-size:11px; font-weight:400;
+  color:#777; text-align:center; padding:4px 2px;
+  border-bottom:0.5px solid #3a2a2a; letter-spacing:.05em;
+}
+.bar { height:24px; border-radius:2px; cursor:pointer; transition:opacity .15s; position:relative; }
+.bar:hover { opacity:.75; }
+.bar.active { outline:2px solid #CC1111; outline-offset:1px; }
+.month-header {
+  font-family:'Oswald',sans-serif; font-size:12px; font-weight:600;
+  color:#CC1111; text-align:center; padding:2px 0 6px;
+  letter-spacing:.1em; text-transform:uppercase;
+}
+
+/* ─── Detail card ─────────────────────────────────────── */
+.hint { font-size:12px; color:#5a4f4f; text-align:center; margin-top:8px; letter-spacing:.04em; }
+.detail-card {
+  background:#1e1616; border-radius:2px;
+  border:0.5px solid #3a2020; border-left:3px solid #CC1111;
+  padding:1rem 1.25rem; margin-top:12px; min-height:80px;
+}
+.detail-card > h3 {
+  font-family:'Oswald',sans-serif; font-size:14px; font-weight:600;
+  color:#e8e0d5; margin-bottom:14px; text-transform:uppercase; letter-spacing:.06em;
+}
+
+/* ─── Dia ─────────────────────────────────────────────── */
+.day-block { margin-bottom:14px; }
+.day-header { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.badge {
+  font-family:'Oswald',sans-serif; font-size:11px; font-weight:500;
+  padding:2px 7px; border-radius:2px; white-space:nowrap;
+  min-width:52px; text-align:center; letter-spacing:.04em;
+  outline:none; cursor:text;
+}
+.badge:focus { outline:1.5px solid currentColor; outline-offset:1px; }
+.day-spacer { flex:1; }
+.del-day-btn {
+  background:none; border:none; color:#5a4040; cursor:pointer;
+  font-size:12px; font-family:'Oswald',sans-serif; letter-spacing:.04em;
+  opacity:0; transition:opacity .15s, color .15s; padding:0 3px;
+}
+.day-block:hover .del-day-btn { opacity:1; }
+.del-day-btn:hover { color:#CC1111; }
+.add-btn {
+  font-size:11px; color:#CC1111; background:none;
+  border:0.5px solid #CC1111; border-radius:2px;
+  padding:1px 8px; cursor:pointer;
+  font-family:'Oswald',sans-serif; letter-spacing:.04em;
+  opacity:.6; transition:opacity .15s; flex-shrink:0;
+}
+.add-btn:hover { opacity:1; }
+
+/* ─── Tarefas ─────────────────────────────────────────── */
+.task-item { display:flex; align-items:flex-start; gap:7px; margin-bottom:5px; padding-left:2px; }
+.task-item input[type=checkbox] {
+  margin-top:3px; flex-shrink:0; accent-color:#CC1111;
+  cursor:pointer; width:13px; height:13px;
+}
+.task-text {
+  flex:1; font-size:13px; color:#b0a5a5; line-height:1.5;
+  outline:none; cursor:text; border-radius:2px;
+  min-width:0; word-break:break-word;
+  transition:background .1s; padding:0 2px;
+}
+.task-text:focus { background:rgba(255,255,255,.04); }
+.task-text.done { text-decoration:line-through; opacity:.38; }
+.del-btn {
+  flex-shrink:0; background:none; border:none;
+  color:#5a4040; cursor:pointer; font-size:16px;
+  line-height:1; padding:0 2px; margin-top:1px;
+  transition:color .15s; opacity:0;
+}
+.task-item:hover .del-btn { opacity:1; }
+.del-btn:hover { color:#CC1111; }
+
+/* ─── Adicionar dia ───────────────────────────────────── */
+.add-day-row { display:flex; justify-content:flex-end; margin-top:6px; }
+.add-day-btn {
+  font-size:11px; color:#5a4545; background:none;
+  border:0.5px dashed #5a4545; border-radius:2px;
+  padding:2px 10px; cursor:pointer;
+  font-family:'Oswald',sans-serif; letter-spacing:.04em;
+  transition:all .15s;
+}
+.add-day-btn:hover { color:#CC1111; border-color:#CC1111; border-style:solid; }
+
+/* ─── Orientação ──────────────────────────────────────── */
+.orientacao-note {
+  background:#1a1530; border:0.5px solid #534AB7; border-radius:2px;
+  padding:6px 10px; font-size:12px; color:#8f8acc;
+  margin-bottom:8px; display:flex; align-items:flex-start;
+  gap:5px; flex-wrap:wrap;
+}
+.orientacao-label { flex-shrink:0; }
+.prep-text {
+  outline:none; cursor:text; border-radius:2px; flex:1;
+  min-width:120px; transition:background .1s; padding:0 2px;
+}
+.prep-text:focus { background:rgba(255,255,255,.05); }
+
+/* ─── Campo ───────────────────────────────────────────── */
+.campo-banner {
+  border-radius:2px; padding:7px 10px; font-size:12px;
+  color:#e8c4b0; font-weight:500; margin-bottom:10px;
+  display:flex; align-items:flex-start; gap:6px;
+  background:#2a1810; border-left:3px solid #D85A30;
+}
+.tarde-note {
+  background:#1a1515; border:0.5px solid #3a2a2a; border-radius:2px;
+  padding:6px 10px; font-size:12px; color:#7a6f6f; margin-bottom:10px;
+}
+
+/* ─── Toggle de visão ────────────────────────────────── */
+.view-toggle { display:flex; gap:6px; margin-bottom:14px; }
+.view-btn {
+  font-family:'Oswald',sans-serif; font-size:12px; letter-spacing:.07em;
+  text-transform:uppercase; background:none;
+  border:0.5px solid #3a2a2a; color:#5a4f4f;
+  border-radius:2px; padding:4px 14px; cursor:pointer; transition:all .15s;
+}
+.view-btn:hover { border-color:#CC1111; color:#e8e0d5; }
+.view-btn.active { border-color:#CC1111; color:#CC1111; background:#1e1010; }
+
+/* ─── Calendário ──────────────────────────────────────── */
+.cal-wrap { display:flex; gap:18px; flex-wrap:wrap; }
+.cal-month { flex:1; min-width:250px; }
+.cal-month-title {
+  font-family:'Oswald',sans-serif; font-size:13px; font-weight:700;
+  color:#CC1111; letter-spacing:.12em; text-transform:uppercase;
+  border-left:3px solid #CC1111; padding-left:8px; margin-bottom:8px;
+}
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.cal-dow {
+  font-family:'Oswald',sans-serif; font-size:10px; color:#555;
+  text-align:center; padding:3px 0; letter-spacing:.04em;
+}
+.cal-day {
+  min-height:52px; border:0.5px solid #2a1e1e; border-radius:2px;
+  padding:4px 5px; cursor:default; transition:border-color .12s;
+  position:relative;
+}
+.cal-day.clickable { cursor:pointer; }
+.cal-day.clickable:hover { border-color:#6a3a3a; }
+.cal-day.active-week { border-color:#CC1111; background:#1e1010; }
+.cal-day.empty { border-color:transparent; background:none; }
+.cal-day-num {
+  font-family:'Oswald',sans-serif; font-size:11px;
+  color:#444; margin-bottom:4px; line-height:1;
+}
+.cal-day.clickable .cal-day-num { color:#9a8888; }
+.cal-day.active-week .cal-day-num { color:#e8e0d5; }
+.cal-dots { display:flex; flex-wrap:wrap; gap:2px; }
+.cal-dot {
+  width:7px; height:7px; border-radius:2px; flex-shrink:0;
+  transition:opacity .1s;
+}
+.cal-dot.done { opacity:.28; }
+.cal-orient-dot {
+  position:absolute; top:4px; right:4px;
+  width:5px; height:5px; border-radius:50%;
+  background:#534AB7; opacity:.8;
+}
+.cal-campo-dot {
+  position:absolute; top:4px; right:4px;
+  width:5px; height:5px; border-radius:50%;
+  background:#D85A30; opacity:.8;
+}
+
+/* ─── Toast ───────────────────────────────────────────── */
+.toast {
+  position:fixed; bottom:24px; right:24px;
+  background:#1e1616; border:0.5px solid #CC1111; color:#CC1111;
+  font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:.1em;
+  text-transform:uppercase; padding:5px 14px; border-radius:2px;
+  opacity:0; transition:opacity .25s; pointer-events:none;
+}
+.toast.show { opacity:1; }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="topbar">
+  <h1>Cronograma TFG2 — Isadora Barbosa Castro Gomes · abr–jun 2026</h1>
+  <div class="save-bar">
+    <span id="save-status" class="save-status local">SALVO LOCALMENTE</span>
+    <button id="btn-link"    class="ctrl-btn primary" onclick="linkFile()">Vincular arquivo</button>
+    <button id="btn-relink"  class="ctrl-btn primary" onclick="linkFile()" style="display:none">Reativar</button>
+    <button class="ctrl-btn" onclick="downloadHTML()" title="Baixar HTML com dados embutidos">⬇ HTML</button>
+    <button class="ctrl-btn" onclick="exportJSON()"   title="Exportar dados como JSON">⬇ JSON</button>
+    <label  class="ctrl-btn" title="Importar dados de JSON">⬆ JSON<input type="file" accept=".json" onchange="importJSON(event)" style="display:none"></label>
+  </div>
+</div>
+
+<div class="view-toggle">
+  <button class="view-btn active" data-view="gantt"     onclick="switchView('gantt')">📊 Gantt</button>
+  <button class="view-btn"        data-view="calendar"  onclick="switchView('calendar')">📅 Calendário</button>
+</div>
+
+<div class="legend">
+  <span class="leg-item"><span class="leg-dot" style="background:#1D9E75"></span>Organização</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#534AB7"></span>Reescrita TFG1</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#378ADD"></span>Novo capítulo</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#BA7517"></span>Produto gráfico</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#639922"></span>Revisão e entrega</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#D85A30;border-radius:50%"></span>Campo (tardes em OP)</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#534AB7;border-radius:50%"></span>Orientação 14h</span>
+</div>
+
+<div id="view-gantt">
+<table class="gantt-grid">
+<thead>
+  <tr>
+    <th style="text-align:right"></th>
+    <th colspan="4" class="month-header" style="border-right:0.5px solid #3a2a2a">ABRIL</th>
+    <th colspan="4" class="month-header" style="border-right:0.5px solid #3a2a2a">MAIO</th>
+    <th colspan="4" class="month-header">JUNHO</th>
+  </tr>
+  <tr>
+    <th style="min-width:70px"></th>
+    <th>6/4</th><th>13/4</th><th>20/4</th><th style="border-right:0.5px solid #3a2a2a">27/4</th>
+    <th>4/5</th><th>11/5</th><th>18/5</th><th style="border-right:0.5px solid #3a2a2a">25/5</th>
+    <th>1/6</th><th>8/6</th><th>15/6</th><th>22/6</th>
+  </tr>
+</thead>
+<tbody id="ganttBody"></tbody>
+</table>
+</div>
+
+<div id="view-calendar" style="display:none"></div>
+
+<p class="hint" id="view-hint">Clique em qualquer bloco para ver e editar · alterações salvas automaticamente</p>
+<div class="detail-card" id="detail">
+  <p style="font-size:13px;color:#5a4f4f">Selecione uma semana no diagrama.</p>
+</div>
+</div>
+
+<div id="toast" class="toast">Salvo</div>
+
+<!-- Dados embutidos — atualizados a cada "Baixar HTML" ou salvamento direto no arquivo -->
+<script id="data-store" type="application/json">null</script>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// DADOS PADRÃO
+// ══════════════════════════════════════════════════════════════════════════════
+const defaultSessions = [
+  { title:'Semana 1 (6–12/abr) — Diagnóstico', rows:[
+    { day:'seg 6/4',  c:'#1D9E75', orient:true,
+      prep:'Chegar na orientação com lista dos feedbacks da banca + 3 perguntas concretas sobre o caminho do TFG2.',
+      tasks:[{text:'MANHÃ: reler TCC1 inteiro, anotar pontos a reescrever, lacunas de imagem e o que está bom.', done:false}] },
+    { day:'qui 9/4',  c:'#1D9E75',
+      tasks:[{text:'Transformar os feedbacks e as decisões da orientação em lista de tarefas concretas para as próximas semanas.', done:false}] },
+    { day:'sex 10/4', c:'#1D9E75',
+      tasks:[{text:'Analisar inspirações gráficas: levantar referências visuais (atlas, fanzines, cadernos etnográficos) e montar moodboard inicial para o produto.', done:false}] },
+  ]},
+  { title:'Semana 2 (13–19/abr) — Definição do produto e reescrita', rows:[
+    { day:'seg 14/4', c:'#534AB7', orient:true,
+      prep:'Levar 2–3 opções de formato para o produto final (ex: atlas etnográfico, caderno de cenas, fanzine). Decidir na orientação.',
+      tasks:[{text:'MANHÃ: pesquisar referências visuais de produtos gráficos similares. Montar apresentação rápida das opções.', done:false}] },
+    { day:'qui 17/4', c:'#534AB7',
+      tasks:[{text:'Reescrever introdução e objetivos com mais precisão, incorporando as decisões da orientação.', done:false}] },
+    { day:'sex 18/4', c:'#534AB7',
+      tasks:[{text:'Mapear quais imagens/figuras estão faltando no TFG1. Listar o que será fotografado e desenhado no campo de abril.', done:false}] },
+  ]},
+  { title:'Semana 3 (20–26/abr) — Reescrita do TFG1', rows:[
+    { day:'seg 21/4', c:'#534AB7', orient:true,
+      prep:'Levar introdução e objetivos reescritos para validar. Tirar dúvidas sobre a estrutura do novo capítulo.',
+      tasks:[{text:'MANHÃ: reescrever trecho do 2º Ato sobre arquitetura hostil e Terminal Barão de Camargos.', done:false}] },
+    { day:'qui 24/4', c:'#534AB7',
+      tasks:[{text:'Reescrever seções do 1º Ato: articular cenário nacional com Ouro Preto de forma mais direta.', done:false}] },
+    { day:'sex 25/4', c:'#534AB7',
+      tasks:[{text:'Revisar "Cena 1" e "Cena 2" — coerência da voz narrativa com o texto teórico. Preparar roteiro de campo para a semana seguinte.', done:false}] },
+  ]},
+  { title:'Semana 4 (27/abr–3/mai) — Campo OP + processamento', rows:[
+    { day:'seg 28/4', c:'#534AB7', orient:true,
+      prep:'Levar TFG1 revisado até aqui. Discutir o que priorizar no campo desta semana.',
+      tasks:[{text:'MANHÃ: fechar preparação do roteiro de campo (perguntas Centro POP, lista de espaços, caderno de anotações).', done:false}] },
+    { day:'qui 30/4', c:'#534AB7',
+      tasks:[{text:'MANHÃ (9h30–12h30): produção teórica — escrever parágrafo de transição entre os atos. TARDE: campo em Ouro Preto.', done:false}] },
+    { day:'sex 2/5',  c:'#534AB7',
+      tasks:[{text:'MANHÃ (9h30–12h30): iniciar processamento das anotações e fotos. TARDE: campo em Ouro Preto.', done:false}] },
+  ]},
+  { title:'Semana 5 (4–10/mai) — Processamento e início do novo capítulo', rows:[
+    { day:'seg 5/5',  c:'#378ADD', orient:true,
+      prep:'Levar material bruto do campo de abril (fotos, anotações, croquis). Discutir o que entra no texto e o que fica só no produto.',
+      tasks:[{text:'MANHÃ: finalizar seleção de imagens do campo. Inserir figuras no TFG1 com legendas e fontes.', done:false}] },
+    { day:'qui 8/5',  c:'#378ADD',
+      tasks:[{text:'Esboçar estrutura do novo capítulo: quais cenas, quais argumentos, como se conecta aos atos anteriores.', done:false}] },
+    { day:'sex 9/5',  c:'#378ADD',
+      tasks:[{text:'Redigir 1ª cena etnográfica do 3º Ato (baseada no campo de abril). ~600 palavras.', done:false}] },
+  ]},
+  { title:'Semana 6 (11–17/mai) — Desenvolvimento do novo capítulo', rows:[
+    { day:'seg 12/5', c:'#378ADD', orient:true,
+      prep:'Levar esboço do novo capítulo e 1ª cena. Discutir se a estrutura está alinhada com o que a orientadora espera.',
+      tasks:[{text:'MANHÃ: desenvolver argumento teórico do capítulo — Miraftab, Lefebvre, resistência urbana.', done:false}] },
+    { day:'qui 15/5', c:'#378ADD',
+      tasks:[{text:'Escrever seção sobre a oficina planejada no Centro POP: metodologia, intenções, articulação com a pesquisa.', done:false}] },
+    { day:'sex 16/5', c:'#378ADD',
+      tasks:[{text:'Revisão do capítulo até aqui. Organizar o que ainda falta escrever antes do campo de maio.', done:false}] },
+  ]},
+  { title:'Semana 7 (18–24/mai) — Campo OP + produto gráfico', rows:[
+    { day:'seg 19/5', c:'#BA7517', orient:true,
+      prep:'Levar primeiros rascunhos visuais do produto. Validar linguagem gráfica com a orientadora antes de avançar.',
+      tasks:[{text:'MANHÃ: definir linguagem visual do produto (paleta, formato das páginas, relação foto/croqui/texto).', done:false}] },
+    { day:'qui 22/5', c:'#BA7517',
+      tasks:[{text:'MANHÃ (9h30–12h30): primeiros rascunhos visuais do produto finalizados. TARDE: campo em Ouro Preto.', done:false}] },
+    { day:'sex 23/5', c:'#BA7517',
+      tasks:[{text:'MANHÃ (9h30–12h30): processar material do campo de maio. Incorporar registros ao produto. TARDE: retorno.', done:false}] },
+  ]},
+  { title:'Semana 8 (25–31/mai) — Produto gráfico + fechamento do capítulo', rows:[
+    { day:'seg 26/5', c:'#BA7517', orient:true,
+      prep:'Levar 2–3 páginas do produto finalizadas + rascunho do 3º Ato. Orientação de conteúdo e forma.',
+      tasks:[{text:'MANHÃ: produzir 2–3 páginas/quadros do produto. Testar legibilidade com alguém de fora.', done:false}] },
+    { day:'qui 29/5', c:'#378ADD',
+      tasks:[{text:'Fechar rascunho do 3º Ato integrando campo de maio e oficina ao texto.', done:false}] },
+    { day:'sex 30/5', c:'#BA7517',
+      tasks:[{text:'Mais 2 páginas do produto. Verificar coerência visual e narrativa com o texto escrito.', done:false}] },
+  ]},
+  { title:'Semana 9 (1–7/jun) — Produto gráfico e considerações finais', rows:[
+    { day:'seg 2/6',  c:'#BA7517', orient:true,
+      prep:'Levar produto com ~60% concluído + considerações finais em rascunho. Últimos ajustes de conteúdo antes da reta final.',
+      tasks:[{text:'MANHÃ: continuar produção gráfica. Meta: 60% do produto finalizado.', done:false}] },
+    { day:'qui 5/6',  c:'#378ADD',
+      tasks:[{text:'Escrever considerações finais articulando os três atos. Responder ao feedback da banca sobre clareza dos objetivos.', done:false}] },
+    { day:'sex 6/6',  c:'#BA7517',
+      tasks:[{text:'Mais 2 páginas do produto. Enviar versão intermediária para a orientadora se ela solicitar fora da segunda.', done:false}] },
+  ]},
+  { title:'Semana 10 (8–14/jun) — Campo OP + revisão geral', rows:[
+    { day:'seg 9/6',  c:'#639922', orient:true,
+      prep:'Levar versão quase completa do TCC. Orientação focada em ajustes finais de conteúdo.',
+      tasks:[{text:'MANHÃ: revisão geral — coerência entre objetivos, metodologia, capítulos e produto.', done:false}] },
+    { day:'qui 12/6', c:'#639922',
+      tasks:[{text:'MANHÃ (9h30–12h30): revisão de referências, ABNT e figuras com legendas. TARDE: campo em Ouro Preto.', done:false}] },
+    { day:'sex 13/6', c:'#BA7517',
+      tasks:[{text:'MANHÃ (9h30–12h30): produto gráfico ~90% finalizado. TARDE: campo em Ouro Preto.', done:false}] },
+  ]},
+  { title:'Semana 11 (15–21/jun) — Ajustes finais', rows:[
+    { day:'seg 16/6', c:'#639922', orient:true,
+      prep:'Levar versão final para validação da orientadora antes da entrega.',
+      tasks:[{text:'MANHÃ: integrar material do campo de junho ao texto e ao produto. Incorporar feedback da orientadora.', done:false}] },
+    { day:'qui 19/6', c:'#639922',
+      tasks:[{text:'Revisão de notas de rodapé, citações e coerência das cenas etnográficas com os atos teóricos.', done:false}] },
+    { day:'sex 20/6', c:'#639922',
+      tasks:[{text:'Finalizar produto gráfico 100%. Montar PDF completo do TCC para leitura final.', done:false}] },
+  ]},
+  { title:'Semana 12 (22–30/jun) — Entrega', rows:[
+    { day:'seg 23/6', c:'#639922', orient:true,
+      prep:'Orientação final — checar se há algum ajuste de última hora antes da submissão.',
+      tasks:[{text:'MANHÃ: leitura em voz alta do texto completo para capturar erros e trechos confusos.', done:false}] },
+    { day:'qui 26/6', c:'#639922',
+      tasks:[{text:'Ajustes finais de formatação, sumário e paginação.', done:false}] },
+    { day:'sex 27/6', c:'#639922',
+      tasks:[{text:'Gerar PDF final e submeter. Tarde reservada como margem de segurança.', done:false}] },
+  ]},
+];
+
+const weeks = [
+  { campo:false },
+  { campo:false },
+  { campo:false },
+  { campo:true, campoDates:'30 abr, 1 e 2 mai (tardes)', campoDesc:'Centro POP (entrevista/observação), caminhada pelo centro histórico, levantamento fotográfico, primeiros croquis etnográficos.' },
+  { campo:false },
+  { campo:false },
+  { campo:true, campoDates:'21 e 22 mai (tardes)', campoDesc:'Oficina no Centro POP (se possível), aprofundamento fotográfico, croquis com sobreposição de mapa.' },
+  { campo:false },
+  { campo:false },
+  { campo:true, campoDates:'11, 12 e 13 jun (tardes)', campoDesc:'Última visita: fechar lacunas fotográficas, croquis finais, possível retorno ao Centro POP para validar narrativa.' },
+  { campo:false },
+  { campo:false },
+];
+
+const phases = [
+  { color:'#1D9E75', weeks:[0,1] },
+  { color:'#534AB7', weeks:[1,2,3] },
+  { color:'#378ADD', weeks:[4,5,6,7,8] },
+  { color:'#BA7517', weeks:[6,7,8,9,10] },
+  { color:'#639922', weeks:[9,10,11] },
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PERSISTÊNCIA
+// ══════════════════════════════════════════════════════════════════════════════
+const LS_KEY = 'tfg2_isadora_v1';
+const IDB_DB  = 'tfg2_fs';
+const IDB_ST  = 'handles';
+
+// — Carrega dados: script embutido → localStorage → padrão
+function loadData() {
+  try {
+    const emb = document.getElementById('data-store').textContent.trim();
+    if (emb && emb !== 'null') return JSON.parse(emb);
+  } catch(_) {}
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(_) {}
+  return JSON.parse(JSON.stringify(defaultSessions));
+}
+
+let sessions = loadData();
+
+// — Salva sempre no localStorage e, se arquivo vinculado, no arquivo local
+async function saveData() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(sessions)); } catch(_) {}
+  if (fileHandle) await writeToFile();
+  showToast();
+}
+
+// ── IndexedDB (guarda o FileSystemFileHandle entre sessões) ──────────────────
+function openIDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(IDB_DB, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_ST);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = () => rej();
+  });
+}
+async function saveHandleToDB(h) {
+  const db = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(IDB_ST, 'readwrite');
+    tx.objectStore(IDB_ST).put(h, 'file');
+    tx.oncomplete = res; tx.onerror = rej;
+  });
+}
+async function loadHandleFromDB() {
+  try {
+    const db = await openIDB();
+    return new Promise(res => {
+      const tx = db.transaction(IDB_ST, 'readonly');
+      const req = tx.objectStore(IDB_ST).get('file');
+      req.onsuccess = () => res(req.result || null);
+      req.onerror   = () => res(null);
+    });
+  } catch { return null; }
+}
+
+// ── File System Access API ───────────────────────────────────────────────────
+let fileHandle = null;
+
+function hasFileAPI() {
+  return typeof window.showOpenFilePicker === 'function';
+}
+
+function setStatus(state) {
+  const el = document.getElementById('save-status');
+  const btnLink  = document.getElementById('btn-link');
+  const btnRelink = document.getElementById('btn-relink');
+  if (state === 'linked') {
+    el.textContent = '● ARQUIVO VINCULADO'; el.className = 'save-status linked';
+    btnLink.style.display  = 'none';
+    btnRelink.style.display = 'none';
+  } else if (state === 'stale') {
+    el.textContent = '○ REATIVAR SALVAMENTO'; el.className = 'save-status stale';
+    btnLink.style.display   = 'none';
+    btnRelink.style.display = '';
+  } else {
+    el.textContent = 'SALVO LOCALMENTE'; el.className = 'save-status local';
+    btnLink.style.display   = hasFileAPI() ? '' : 'none';
+    btnRelink.style.display = 'none';
+  }
+}
+
+async function writeToFile() {
+  if (!fileHandle) return;
+  try {
+    // Atualiza o script tag embutido antes de serializar o HTML
+    document.getElementById('data-store').textContent = JSON.stringify(sessions);
+    let html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    // Garantia extra via regex caso outerHTML não capture a mudança
+    html = html.replace(
+      /(<script id="data-store"[^>]*>)([\s\S]*?)(<\/script>)/,
+      '$1' + JSON.stringify(sessions).replace(/\$/g, '$$$$') + '$3'
+    );
+    const w = await fileHandle.createWritable();
+    await w.write(html);
+    await w.close();
+    setStatus('linked');
+  } catch(e) {
+    console.warn('Erro ao escrever no arquivo:', e);
+    setStatus('stale');
+    fileHandle = null;
+  }
+}
+
+async function linkFile() {
+  if (!hasFileAPI()) return;
+  try {
+    [fileHandle] = await window.showOpenFilePicker({
+      types: [{ description: 'HTML', accept: { 'text/html': ['.html'] } }]
+    });
+    await saveHandleToDB(fileHandle);
+    await writeToFile();
+    setStatus('linked');
+  } catch(e) {
+    if (e.name !== 'AbortError') console.warn(e);
+  }
+}
+
+// — Tenta restaurar handle salvo ao abrir a página
+async function tryRestoreHandle() {
+  if (!hasFileAPI()) { setStatus('local'); return; }
+  const h = await loadHandleFromDB();
+  if (!h) { setStatus('local'); return; }
+  // Verifica permissão (sem gesture: apenas query)
+  try {
+    const perm = await h.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      fileHandle = h;
+      setStatus('linked');
+    } else {
+      // Permissão expirou — usuário clica em Reativar
+      fileHandle = null;
+      // Guarda o handle na closure para reusar no botão
+      document.getElementById('btn-relink').onclick = async () => {
+        try {
+          const p = await h.requestPermission({ mode: 'readwrite' });
+          if (p === 'granted') { fileHandle = h; await writeToFile(); setStatus('linked'); }
+        } catch(_) {}
+      };
+      setStatus('stale');
+    }
+  } catch { setStatus('local'); }
+}
+
+// ── Download HTML (funciona em qualquer navegador) ───────────────────────────
+function downloadHTML() {
+  document.getElementById('data-store').textContent = JSON.stringify(sessions);
+  let html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  html = html.replace(
+    /(<script id="data-store"[^>]*>)([\s\S]*?)(<\/script>)/,
+    '$1' + JSON.stringify(sessions).replace(/\$/g, '$$$$') + '$3'
+  );
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([html], { type: 'text/html' })),
+    download: 'cronograma_tfg2_isadora.html'
+  });
+  a.click();
+  showToast();
+}
+
+// ── Export / Import JSON ─────────────────────────────────────────────────────
+function exportJSON() {
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([JSON.stringify(sessions, null, 2)], { type: 'application/json' })),
+    download: 'tfg2_dados.json'
+  });
+  a.click();
+}
+function importJSON(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      sessions = data;
+      saveData();
+      if (activeWeek !== null) showDetail(activeWeek);
+    } catch { alert('Arquivo JSON inválido.'); }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════════════════════════
+let toastTimer;
+function showToast() {
+  const el = document.getElementById('toast');
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GANTT
+// ══════════════════════════════════════════════════════════════════════════════
+let activeWeek = null;
+
+function getPhaseColor(wi) {
+  const p = phases.find(ph => ph.weeks.includes(wi));
+  return p ? p.color : '#777';
+}
+
+function renderGantt() {
+  const tbody = document.getElementById('ganttBody');
+  tbody.innerHTML = '';
+  phases.forEach(ph => {
+    const tr = document.createElement('tr');
+    const lbl = document.createElement('td'); lbl.style.minWidth = '70px';
+    tr.appendChild(lbl);
+    weeks.forEach((wk, wi) => {
+      const td = document.createElement('td'); td.style.padding = '2px';
+      if (wi===3||wi===7) td.style.borderRight = '0.5px solid #3a2a2a';
+      if (ph.weeks.includes(wi)) {
+        const bar = document.createElement('div');
+        bar.className = 'bar' + (activeWeek===wi ? ' active' : '');
+        bar.style.cssText = `background:${ph.color};opacity:.85;height:24px;border-radius:2px;cursor:pointer;position:relative;`;
+        if (wk.campo) {
+          const dot = document.createElement('div');
+          dot.style.cssText = 'position:absolute;top:4px;right:5px;width:8px;height:8px;border-radius:50%;background:#fff;opacity:.9;';
+          bar.appendChild(dot);
+        }
+        bar.addEventListener('click', () => { activeWeek = wi; renderGantt(); showDetail(wi); });
+        td.appendChild(bar);
+      } else {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'height:24px;border-radius:2px;background:#252020;cursor:pointer;';
+        empty.addEventListener('click', () => { activeWeek = wi; renderGantt(); showDetail(wi); });
+        td.appendChild(empty);
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+    const sp = document.createElement('tr');
+    sp.innerHTML = '<td colspan="13" style="height:3px"></td>';
+    tbody.appendChild(sp);
+  });
+  const dotRow = document.createElement('tr');
+  dotRow.appendChild(document.createElement('td'));
+  weeks.forEach((wk, wi) => {
+    const td = document.createElement('td');
+    td.style.cssText = 'text-align:center;padding-top:2px;cursor:pointer;font-size:10px;color:#D85A30;';
+    if (wi===3||wi===7) td.style.borderRight = '0.5px solid #3a2a2a';
+    if (wk.campo) td.textContent = '●';
+    td.addEventListener('click', () => { activeWeek = wi; renderGantt(); showDetail(wi); });
+    dotRow.appendChild(td);
+  });
+  tbody.appendChild(dotRow);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DETAIL — EDITÁVEL
+// ══════════════════════════════════════════════════════════════════════════════
+function showDetail(wi) {
+  const s  = sessions[wi];
+  const wk = weeks[wi];
+  const card = document.getElementById('detail');
+  card.innerHTML = '';
+
+  if (wk.campo) {
+    const banner = document.createElement('div');
+    banner.className = 'campo-banner';
+    banner.innerHTML = `📍 <span><strong>${wk.campoDates}</strong> — ${wk.campoDesc}</span>`;
+    card.appendChild(banner);
+    const tarde = document.createElement('div');
+    tarde.className = 'tarde-note';
+    tarde.textContent = 'Manhãs continuam com produção teórica/gráfica. Campo é à tarde, fora das janelas do TCC.';
+    card.appendChild(tarde);
+  }
+
+  const h3 = document.createElement('h3');
+  h3.textContent = s.title;
+  card.appendChild(h3);
+
+  // Renderiza cada dia
+  s.rows.forEach((row, ri) => {
+    card.appendChild(makeDayBlock(wi, ri, row));
+  });
+
+  // Sincroniza a visão ativa com a semana selecionada
+  if (currentView === 'calendar') renderCalendar();
+  else renderGantt();
+
+  // Botão adicionar dia
+  const addRow = document.createElement('div');
+  addRow.className = 'add-day-row';
+  const addDayBtn = document.createElement('button');
+  addDayBtn.className = 'add-day-btn';
+  addDayBtn.textContent = '+ adicionar dia';
+  addDayBtn.addEventListener('click', () => {
+    const color = getPhaseColor(wi);
+    s.rows.push({ day: 'novo dia', c: color, tasks: [{ text: 'Nova tarefa', done: false }] });
+    saveData();
+    showDetail(wi);
+    // Foca no badge do novo dia
+    setTimeout(() => {
+      const badges = card.querySelectorAll('.badge');
+      const last = badges[badges.length - 1];
+      if (last) { last.focus(); selectAll(last); }
+    }, 40);
+  });
+  addRow.appendChild(addDayBtn);
+  card.appendChild(addRow);
+}
+
+function makeDayBlock(wi, ri, row) {
+  const block = document.createElement('div');
+  block.className = 'day-block';
+
+  // ── Cabeçalho do dia ──────────────────────────────────
+  const header = document.createElement('div');
+  header.className = 'day-header';
+
+  // Badge (nome do dia — editável)
+  const badge = document.createElement('span');
+  badge.className = 'badge';
+  badge.style.cssText = `background:${row.c}22;color:${row.c}`;
+  badge.contentEditable = 'true';
+  badge.textContent = row.day;
+  badge.addEventListener('blur', () => {
+    const v = badge.textContent.trim();
+    if (v) { sessions[wi].rows[ri].day = v; saveData(); }
+    else badge.textContent = row.day;
+  });
+  badge.addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); badge.blur(); } });
+
+  // Espaçador
+  const spacer = document.createElement('span');
+  spacer.className = 'day-spacer';
+
+  // Botão remover dia
+  const delDay = document.createElement('button');
+  delDay.className = 'del-day-btn';
+  delDay.textContent = '× remover dia';
+  delDay.addEventListener('click', () => {
+    sessions[wi].rows.splice(ri, 1);
+    saveData();
+    showDetail(wi);
+  });
+
+  // Botão adicionar tarefa
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-btn';
+  addBtn.textContent = '+ tarefa';
+  addBtn.addEventListener('click', () => {
+    sessions[wi].rows[ri].tasks.push({ text: 'Nova tarefa', done: false });
+    saveData();
+    showDetail(wi);
+    setTimeout(() => {
+      const allTexts = document.getElementById('detail').querySelectorAll('.task-text');
+      const last = allTexts[allTexts.length - 1];
+      if (last) { last.focus(); selectAll(last); }
+    }, 40);
+  });
+
+  header.appendChild(badge);
+  header.appendChild(spacer);
+  header.appendChild(delDay);
+  header.appendChild(addBtn);
+  block.appendChild(header);
+
+  // ── Nota de orientação ────────────────────────────────
+  if (row.orient) {
+    const note = document.createElement('div');
+    note.className = 'orientacao-note';
+    const label = document.createElement('span');
+    label.className = 'orientacao-label';
+    label.textContent = '◆ Orientação 14h — levar: ';
+    const prepEl = document.createElement('span');
+    prepEl.className = 'prep-text';
+    prepEl.contentEditable = 'true';
+    prepEl.textContent = row.prep || '';
+    prepEl.addEventListener('blur', () => {
+      sessions[wi].rows[ri].prep = prepEl.textContent.trim();
+      saveData();
+    });
+    prepEl.addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); prepEl.blur(); } });
+    note.appendChild(label);
+    note.appendChild(prepEl);
+    block.appendChild(note);
+  }
+
+  // ── Tarefas ────────────────────────────────────────────
+  row.tasks.forEach((task, ti) => {
+    block.appendChild(makeTaskItem(wi, ri, ti, task));
+  });
+
+  return block;
+}
+
+function makeTaskItem(wi, ri, ti, task) {
+  const item = document.createElement('div');
+  item.className = 'task-item';
+
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = task.done;
+  cb.addEventListener('change', () => {
+    sessions[wi].rows[ri].tasks[ti].done = cb.checked;
+    textEl.classList.toggle('done', cb.checked);
+    saveData();
+  });
+
+  const textEl = document.createElement('span');
+  textEl.className = 'task-text' + (task.done ? ' done' : '');
+  textEl.contentEditable = 'true';
+  textEl.textContent = task.text;
+  textEl.addEventListener('blur', () => {
+    const v = textEl.textContent.trim();
+    if (!v) {
+      sessions[wi].rows[ri].tasks.splice(ti, 1);
+      saveData();
+      showDetail(wi);
+    } else {
+      sessions[wi].rows[ri].tasks[ti].text = v;
+      saveData();
+    }
+  });
+  textEl.addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); textEl.blur(); } });
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'del-btn';
+  delBtn.textContent = '×';
+  delBtn.title = 'Remover tarefa';
+  delBtn.addEventListener('click', () => {
+    sessions[wi].rows[ri].tasks.splice(ti, 1);
+    saveData();
+    showDetail(wi);
+  });
+
+  item.appendChild(cb);
+  item.appendChild(textEl);
+  item.appendChild(delBtn);
+  return item;
+}
+
+function selectAll(el) {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  const s = window.getSelection();
+  s.removeAllRanges();
+  s.addRange(r);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CALENDÁRIO
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Converte "seg 6/4", "sex 2/5", etc. → chave "2026-04-06"
+function parseRowDate(dayStr) {
+  const m = dayStr.match(/(\d+)\/(\d+)/);
+  if (!m) return null;
+  const d = parseInt(m[1]), mo = parseInt(m[2]);
+  return `2026-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+// Monta mapa dateKey → [{wi, ri, row}]
+function buildDateMap() {
+  const map = {};
+  sessions.forEach((s, wi) => {
+    s.rows.forEach((row, ri) => {
+      const key = parseRowDate(row.day);
+      if (!key) return;
+      if (!map[key]) map[key] = [];
+      map[key].push({ wi, ri, row });
+    });
+  });
+  return map;
+}
+
+// Datas de campo hardcoded para pintar no calendário
+const campoDays = new Set([
+  '2026-04-30','2026-05-01','2026-05-02',
+  '2026-05-21','2026-05-22',
+  '2026-06-11','2026-06-12','2026-06-13',
+]);
+
+function renderCalendar() {
+  const container = document.getElementById('view-calendar');
+  container.innerHTML = '';
+  const dateMap = buildDateMap();
+
+  const months = [
+    { year:2026, month:3, name:'Abril' },
+    { year:2026, month:4, name:'Maio'  },
+    { year:2026, month:5, name:'Junho' },
+  ];
+  const dow = ['D','S','T','Q','Q','S','S'];
+
+  const wrap = document.createElement('div');
+  wrap.className = 'cal-wrap';
+
+  months.forEach(({ year, month, name }) => {
+    const monthEl = document.createElement('div');
+    monthEl.className = 'cal-month';
+
+    const title = document.createElement('div');
+    title.className = 'cal-month-title';
+    title.textContent = name + ' 2026';
+    monthEl.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'cal-grid';
+
+    dow.forEach(d => {
+      const h = document.createElement('div');
+      h.className = 'cal-dow';
+      h.textContent = d;
+      grid.appendChild(h);
+    });
+
+    const firstDow = new Date(year, month, 1).getDay(); // 0=Dom
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 0; i < firstDow; i++) {
+      const e = document.createElement('div');
+      e.className = 'cal-day empty';
+      grid.appendChild(e);
+    }
+
+    for (let d = 1; d <= totalDays; d++) {
+      const key  = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const entries = dateMap[key] || [];
+      const isCampo = campoDays.has(key);
+      const hasWork = entries.length > 0;
+
+      const cell = document.createElement('div');
+      cell.className = 'cal-day' + (hasWork ? ' clickable' : '');
+
+      // Destaca semana ativa
+      if (activeWeek !== null && entries.some(e => e.wi === activeWeek)) {
+        cell.classList.add('active-week');
+      }
+
+      const num = document.createElement('div');
+      num.className = 'cal-day-num';
+      num.textContent = d;
+      cell.appendChild(num);
+
+      // Pontos coloridos por entrada (uma por row)
+      if (hasWork) {
+        const dots = document.createElement('div');
+        dots.className = 'cal-dots';
+        entries.forEach(({ row }) => {
+          const allDone = row.tasks.length > 0 && row.tasks.every(t => t.done);
+          const dot = document.createElement('span');
+          dot.className = 'cal-dot' + (allDone ? ' done' : '');
+          dot.style.background = row.c;
+          const preview = row.tasks.map(t => (t.done ? '✓ ' : '') + t.text).join('\n');
+          dot.title = preview;
+          dots.appendChild(dot);
+
+          // Indicador de orientação
+          if (row.orient) {
+            const od = document.createElement('span');
+            od.className = 'cal-orient-dot';
+            od.title = 'Orientação 14h';
+            cell.appendChild(od);
+          }
+        });
+        cell.appendChild(dots);
+
+        cell.title = entries.flatMap(e => e.row.tasks.map(t => t.text)).join('\n');
+        cell.addEventListener('click', () => {
+          activeWeek = entries[0].wi;
+          renderCalendar();
+          showDetail(activeWeek);
+          document.getElementById('detail').scrollIntoView({ behavior:'smooth', block:'nearest' });
+        });
+      }
+
+      // Indicador de campo (sobrepõe orient se ambos)
+      if (isCampo) {
+        const cd = document.createElement('span');
+        cd.className = 'cal-campo-dot';
+        cd.title = 'Campo em Ouro Preto';
+        cell.appendChild(cd);
+      }
+
+      grid.appendChild(cell);
+    }
+
+    monthEl.appendChild(grid);
+    wrap.appendChild(monthEl);
+  });
+
+  container.appendChild(wrap);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TROCA DE VISÃO
+// ══════════════════════════════════════════════════════════════════════════════
+let currentView = 'gantt';
+
+function switchView(v) {
+  currentView = v;
+  document.getElementById('view-gantt').style.display    = v === 'gantt'     ? '' : 'none';
+  document.getElementById('view-calendar').style.display = v === 'calendar'  ? '' : 'none';
+  document.querySelectorAll('.view-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.view === v)
+  );
+  document.getElementById('view-hint').textContent = v === 'gantt'
+    ? 'Clique em qualquer bloco para ver e editar · alterações salvas automaticamente'
+    : 'Clique em qualquer dia com tarefas para ver os detalhes';
+  if (v === 'calendar') renderCalendar();
+  else renderGantt();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════════
+renderGantt();
+tryRestoreHandle();
+</script>
+</body>
+</html>
