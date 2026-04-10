@@ -457,13 +457,17 @@ async function initData() {
     if (!res.ok) throw new Error();
     const data = await res.json();
     if (data && Array.isArray(data)) {
+      // Banco tem dados — usa
       sessions = data;
       try { localStorage.setItem(LS_KEY, JSON.stringify(sessions)); } catch(_) {}
       renderGantt();
       if (currentView === 'calendar') renderCalendar();
       if (activeWeek !== null) showDetail(activeWeek);
-      setStatus('linked');
+    } else {
+      // Banco vazio (null) — popula com dados atuais
+      await saveToCloud();
     }
+    setStatus('linked');
   } catch(_) {
     setStatus('local');
   }
